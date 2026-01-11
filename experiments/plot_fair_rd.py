@@ -68,11 +68,43 @@ def _plot_metric(
         raise SystemExit(f"No valid rows to plot for metric={metric}.")
 
     plt.figure(figsize=(6.0, 4.0))
+    baseline_key = "vanilla"
+    baseline_pts = groups.get(baseline_key, [])
+    non_baseline_pts = [
+        pt for group, pts in groups.items() if group != baseline_key for pt in pts
+    ]
+    zoom_xs = [pt[0] for pt in non_baseline_pts]
+    zoom_xlim: tuple[float, float] | None = None
+    if baseline_pts and zoom_xs:
+        x_min = min(zoom_xs)
+        x_max = max(zoom_xs)
+        if x_max > x_min:
+            pad = (x_max - x_min) * 0.05
+        else:
+            pad = x_min * 0.05 if x_min > 0 else 0.05
+        zoom_xlim = (x_min - pad, x_max + pad)
+
     for group, pts in sorted(groups.items()):
         pts = sorted(pts, key=lambda t: t[0])
         xs = [p[0] for p in pts]
         ys = [p[1] for p in pts]
+        if group == baseline_key and baseline_pts and zoom_xs:
+            continue
         plt.plot(xs, ys, marker="o", linewidth=2, label=group)
+
+    if baseline_pts and zoom_xs:
+        baseline_y = sum(p[1] for p in baseline_pts) / len(baseline_pts)
+        if zoom_xlim is None:
+            x_min, x_max = min(zoom_xs), max(zoom_xs)
+        else:
+            x_min, x_max = zoom_xlim
+        plt.plot(
+            [x_min, x_max],
+            [baseline_y, baseline_y],
+            linestyle=":",
+            linewidth=2,
+            label=baseline_key,
+        )
 
     plt.xlabel("Bits per pixel (bpp)")
     ylabel = {
@@ -84,6 +116,8 @@ def _plot_metric(
     if title is not None:
         plt.title(title)
     plt.grid(True, alpha=0.3)
+    if zoom_xlim is not None:
+        plt.xlim(*zoom_xlim)
     plt.legend()
     if note:
         plt.figtext(0.01, 0.01, note, ha="left", va="bottom", fontsize=8)
@@ -148,4 +182,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
