@@ -48,6 +48,9 @@ def _load_mvsplat_cfg(
     *,
     dataset_root: Path,
     index_path: Path,
+    data_loader_num_workers: int | None,
+    data_loader_persistent_workers: bool | None,
+    data_loader_batch_size: int | None,
 ) -> tuple[Any, Any]:
     from hydra import compose, initialize_config_dir
 
@@ -56,20 +59,29 @@ def _load_mvsplat_cfg(
 
     repo_root = _repo_root()
     config_dir = repo_root / "third_party" / "mvsplat" / "config"
+    overrides = [
+        "+experiment=re10k",
+        "mode=test",
+        "wandb.mode=disabled",
+        "dataset/view_sampler=evaluation",
+        f"dataset.view_sampler.index_path={index_path.resolve()}",
+        f"dataset.roots=[{dataset_root.resolve()}]",
+        "test.save_image=false",
+        "test.save_video=false",
+        "test.compute_scores=false",
+    ]
+    if data_loader_num_workers is not None:
+        overrides.append(f"data_loader.test.num_workers={int(data_loader_num_workers)}")
+    if data_loader_persistent_workers is not None:
+        overrides.append(
+            f"data_loader.test.persistent_workers={str(bool(data_loader_persistent_workers)).lower()}"
+        )
+    if data_loader_batch_size is not None:
+        overrides.append(f"data_loader.test.batch_size={int(data_loader_batch_size)}")
     with initialize_config_dir(config_dir=str(config_dir), version_base=None):
         cfg_dict = compose(
             config_name="main",
-            overrides=[
-                "+experiment=re10k",
-                "mode=test",
-                "wandb.mode=disabled",
-                "dataset/view_sampler=evaluation",
-                f"dataset.view_sampler.index_path={index_path.resolve()}",
-                f"dataset.roots=[{dataset_root.resolve()}]",
-                "test.save_image=false",
-                "test.save_video=false",
-                "test.compute_scores=false",
-            ],
+            overrides=overrides,
         )
 
     set_cfg(cfg_dict)
@@ -183,6 +195,24 @@ def main() -> int:
         help="Device for MVSplat inference.",
     )
     parser.add_argument(
+        "--num-workers",
+        type=int,
+        default=None,
+        help="Override MVSplat dataloader workers (data_loader.test.num_workers).",
+    )
+    parser.add_argument(
+        "--persistent-workers",
+        choices=["auto", "true", "false"],
+        default="auto",
+        help="Override MVSplat dataloader persistence (data_loader.test.persistent_workers).",
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=1,
+        help="Test batch size (only 1 is supported by this script).",
+    )
+    parser.add_argument(
         "--vanilla-bpp",
         type=float,
         default=24.0,
@@ -218,9 +248,21 @@ def main() -> int:
             f"{args.mvsplat_ckpt} not found. Place the pretrained checkpoint under checkpoints/ "
             "(see checkpoints/README.md and docs/INSTALL.md)."
         )
+    if args.batch_size != 1:
+        raise SystemExit("This script currently supports --batch-size=1 only.")
 
     # Load config + build model.
-    _, cfg = _load_mvsplat_cfg(dataset_root=args.dataset_root, index_path=args.index_path)
+    persistent_workers: bool | None = None
+    if args.persistent_workers != "auto":
+        persistent_workers = args.persistent_workers == "true"
+
+    _, cfg = _load_mvsplat_cfg(
+        dataset_root=args.dataset_root,
+        index_path=args.index_path,
+        data_loader_num_workers=args.num_workers,
+        data_loader_persistent_workers=persistent_workers,
+        data_loader_batch_size=args.batch_size,
+    )
     from src.dataset.data_module import DataModule, get_data_shim
     from src.evaluation.metrics import compute_lpips, compute_psnr, compute_ssim
     from src.loss import get_losses
