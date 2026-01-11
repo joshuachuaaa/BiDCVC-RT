@@ -56,7 +56,8 @@ No test-time tuning, no selection on test.
 
 ### 2.2 Training view sampling
 We use the upstream MVSplat training sampler:
-- **bounded sampler:** 2 context views → 1 target view
+- **bounded sampler:** 2 context views → `num_target_views` randomly sampled targets
+  - For RE10K, the upstream dataset-specific config sets `num_target_views=4`.
 - Config: `third_party/mvsplat/config/dataset/view_sampler/bounded.yaml`
 
 Why we do this (and why it’s defensible):

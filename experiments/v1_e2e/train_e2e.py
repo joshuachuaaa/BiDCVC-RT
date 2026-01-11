@@ -11,7 +11,8 @@ estimate (bpp) for the transmitted context images.
 
 Notes:
   - Training uses the upstream MVSplat RE10K pipeline with the bounded sampler
-    (2 context views, 1 target view).
+    (2 context views, and `num_target_views` targets; for RE10K the upstream
+    dataset-specific config uses 4 target views).
   - This script does not run validation; evaluate with the fixed eval index via
     `experiments/v1_baseline/eval_fair_mvsplat.py` after exporting bitstreams.
 """
