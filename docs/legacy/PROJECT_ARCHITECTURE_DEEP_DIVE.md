@@ -342,8 +342,8 @@ The V1 system inserts ELIC compression upstream of MVSplat for controlled study 
 
 | Script | Location | Purpose |
 |--------|----------|---------|
-| [compress.py](../../experiments/v1_baseline/compress.py) | V1 | Compress **only the 2 context views** from the fixed eval index with ELIC; writes recon PNGs + `manifest.csv` (true bitstream bpp). |
-| [eval_fair_mvsplat.py](../../experiments/v1_baseline/eval_fair_mvsplat.py) | V1 | Evaluate MVSplat on the fixed eval index; optionally swap in recon PNGs and report bpp from `manifest.csv`. |
+| [compress.py](../../experiments/v1_compressor/compress.py) | V1 | Compress **only the 2 context views** from the fixed eval index with ELIC; writes recon PNGs + `manifest.csv` (true bitstream bpp). |
+| [eval_fair_mvsplat.py](../../experiments/v1_renderer/eval_fair_mvsplat.py) | V1 | Evaluate MVSplat on the fixed eval index; optionally swap in recon PNGs and report bpp from `manifest.csv`. |
 | [plot_fair_rd.py](../../experiments/plot_fair_rd.py) | Plotting | Plot RD curves from the CSV output of `eval_fair_mvsplat.py`. |
 | [generate_re10k_evaluation_index.py](../../scripts/indices/generate_re10k_evaluation_index.py) | Indices | Optional: regenerate `assets/indices/re10k/evaluation_index_re10k.json` using MVSplat’s generator. |
 
@@ -354,22 +354,22 @@ The V1 system inserts ELIC compression upstream of MVSplat for controlled study 
 python scripts/verify_eval_index.py assets/indices/re10k/evaluation_index_re10k.json --check-dataset
 
 # Step 1: compress context views for multiple λ values.
-python experiments/v1_baseline/compress.py \\
+python experiments/v1_compressor/compress.py \\
   --split test \\
   --index_path assets/indices/re10k/evaluation_index_re10k.json \\
   --lambdas 0.004 0.008 0.016 0.032 0.15 0.45 \\
   --skip_existing
 
 # Step 2: evaluate (vanilla + compressed) and write rows to a CSV.
-python experiments/v1_baseline/eval_fair_mvsplat.py \\
+python experiments/v1_renderer/eval_fair_mvsplat.py \\
   --tag vanilla \\
-  --output experiments/v1_baseline/results/vanilla_fair_val_metrics.csv
+  --output outputs/v1_baseline/results/vanilla_fair_rd.csv
 
-out=experiments/v1_baseline/results/fair_val_metrics.csv
+out=outputs/v1_baseline/results/fair_rd.csv
 rm -f \"$out\"
 for l in 0.004 0.008 0.016 0.032 0.15 0.45; do
-  python experiments/v1_baseline/eval_fair_mvsplat.py \\
-    --compressed-root \"experiments/v1_baseline/compressed/lambda_${l}\" \\
+  python experiments/v1_renderer/eval_fair_mvsplat.py \\
+    --compressed-root \"outputs/v1_baseline/compressed/lambda_${l}\" \\
     --tag \"v1_lambda_${l}\" \\
     --output \"$out\" --append
 done
@@ -381,12 +381,12 @@ bash scripts/plot_fair_rd.sh
 ### Output Structure (V1)
 
 ```
-experiments/v1_baseline/
+outputs/v1_baseline/
 ├── compressed/
 │   └── lambda_<λ>/
 │       ├── recon/<scene>/<frame>.png
 │       └── manifest.csv
 └── results/
-    ├── fair_val_metrics.csv
+    ├── fair_rd.csv
     └── plots/fair_rd_psnr.pdf
 ```

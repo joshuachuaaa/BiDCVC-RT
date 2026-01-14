@@ -2,11 +2,11 @@
 
 Conference-ready repository for thesis experiments on learned compression for novel view synthesis.
 
-This codebase studies three variants built around **MVSplat** (Gaussian splatting NVS) and an **ELIC** reimplementation (learned compression):
+This codebase studies bitrate-constrained novel view synthesis built around **MVSplat** (Gaussian splatting NVS) and an **ELIC** reimplementation (learned compression):
 
-- **V1 (baseline)**: compress context RGB frames with ELIC bitstreams → decode → run MVSplat (true bitstream bpp)
-- **V2 (E2E)**: end-to-end train ELIC (image codec) + MVSplat encoder with a differentiable rate term (planned)
-- **V3 (feature compression)**: compress intermediate MVSplat feature maps with ELIC (split inference) (planned)
+- **V1 baseline**: ELIC-compress context RGB → decode → run MVSplat (true bitstream bpp)
+- **V1 E2E**: end-to-end fine-tune ELIC + MVSplat with a rate–distortion objective (current focus)
+- **V2/V3**: reserved for future variants (feature-level integration, split inference)
 
 ## Getting started
 
@@ -16,7 +16,7 @@ This codebase studies three variants built around **MVSplat** (Gaussian splattin
 
 ## Repo layout
 
-- `experiments/`: experiment entry points (V1/V2/V3) + plotting
+- `experiments/`: experiment entry points (V1 baseline: `v1_compressor/` + `v1_renderer/`; V1 E2E: `v1_e2e/`) + plotting
 - `third_party/`: vendored dependencies (MVSplat, ELIC, rasterizer)
 - `checkpoints/`, `dataset/`, `outputs/`: local artifacts (ignored by git)
 

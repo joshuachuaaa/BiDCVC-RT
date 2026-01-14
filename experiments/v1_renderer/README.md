@@ -25,7 +25,7 @@ Since the codec is frozen, there is **no rate term** in the training loss for th
 - **View sampling:** use the standard MVSplat training sampler (bounded). Do *not* train on the fixed evaluation index.
 - **Evaluation split:** `dataset/re10k/test`
 - **Evaluation protocol:** fixed 2-context → 3-target index at `assets/indices/re10k/evaluation_index_re10k.json`
-- **Evaluation script:** `experiments/v1_baseline/eval_fair_mvsplat.py` (uses the same protocol for all variants)
+- **Evaluation script:** `experiments/v1_renderer/eval_fair_mvsplat.py` (uses the same protocol for all variants)
 
 ## Notes on experimental design
 - Run **per-λ fine-tuning** first (one MVSplat checkpoint per bitrate point). This gives the cleanest RD curve and avoids confounding “variable-rate robustness” effects.
@@ -36,4 +36,3 @@ Since the codec is frozen, there is **no rate term** in the training loss for th
 ## File/Artifact conventions (recommended)
 - Checkpoints: `checkpoints/v1_renderer/<tag>/...` (gitignored)
 - Results CSV: `outputs/v1_renderer/results/fair_rd.csv` (gitignored)
-

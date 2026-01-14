@@ -31,11 +31,10 @@ Add a *small* context-reconstruction regularizer to prevent degenerate “cheati
 - **View sampling:** bounded sampler (standard MVSplat training sampler).
 - **Evaluation split/protocol:** same fixed evaluation index as the baseline:
   - `assets/indices/re10k/evaluation_index_re10k.json` (2 context → 3 target)
-  - `experiments/v1_baseline/eval_fair_mvsplat.py`
+  - `experiments/v1_renderer/eval_fair_mvsplat.py`
 
 ## Notes on experimental design
 - Start with **per-λ fine-tuning** (one ELIC checkpoint per RD point), initialized from the matching vanilla ELIC λ-checkpoint.
 - Report both:
   - Target-view metrics (PSNR/SSIM/LPIPS)
   - Context-view metrics (PSNR/LPIPS of decoded contexts), to demonstrate non-degenerate reconstructions
-

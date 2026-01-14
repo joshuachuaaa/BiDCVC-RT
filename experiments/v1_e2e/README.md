@@ -15,8 +15,8 @@ The intent is not “train something that looks good”, but to produce a pipeli
 - `experiments/v1_e2e/eval_fast_e2e.py`: cheap eval for checkpoint selection (no bitstream export; bpp is an estimate).
 - `experiments/v1_e2e/plot_curves.py`: plot training curves + optional eval curves.
 - Baseline tooling reused:
-  - `experiments/v1_baseline/compress.py` (writes `manifest.csv` from true entropy-coded bytes)
-  - `experiments/v1_baseline/eval_fair_mvsplat.py` (fixed-index evaluation + PSNR/SSIM/LPIPS)
+  - `experiments/v1_compressor/compress.py` (writes `manifest.csv` from true entropy-coded bytes)
+  - `experiments/v1_renderer/eval_fair_mvsplat.py` (fixed-index evaluation + PSNR/SSIM/LPIPS)
 
 ---
 
@@ -69,7 +69,7 @@ We use a fixed, canonical evaluation index:
 - `assets/indices/re10k/evaluation_index_re10k.json` (2 context → 3 target)
 
 Evaluation is run with:
-- `experiments/v1_baseline/eval_fair_mvsplat.py`
+- `experiments/v1_renderer/eval_fair_mvsplat.py`
 
 Why fixed-index evaluation:
 - Eliminates “sampling luck” and makes RD points comparable.
@@ -106,14 +106,27 @@ Why this is not redundant with vanilla ELIC:
 - At low bpp, “best PSNR context recon” is often not “best NVS input”.
 
 ### 3.3 Total objective used by `train_e2e.py`
-We use the **ELIC/CompressAI-style** Lagrangian form:
+We use a standard Lagrangian (rate–distortion) form:
 
-`L = R + λ · (255^2 · D_nvs)`
+`L = R + λ_rd · D_nvs_scaled`
 
-Why the `255^2` scaling exists:
-- The provided ELIC checkpoints were trained with `MSE * 255^2` (pixel units).
-- Scaling `D_nvs` by `255^2` puts the magnitude of the distortion term in a similar regime,
-  so the canonical λ values `{0.004, 0.008, 0.016, 0.032, 0.15, 0.45}` remain meaningful.
+where:
+- `R` is the ELIC bpp estimate from likelihoods (training surrogate for bitrate).
+- `D_nvs` is the vanilla MVSplat task loss on target views:
+  `MSE(Î_tgt, I_tgt) + 0.05 · LPIPS(Î_tgt, I_tgt)` (for RE10K).
+- `D_nvs_scaled` applies a scale to the **MSE component only**:
+  - `D_nvs_scaled = (s_mse · MSE(Î_tgt, I_tgt)) + 0.05 · LPIPS(Î_tgt, I_tgt)`
+  - `s_mse` is controlled by `--nvs-mse-scale` (alias: `--nvs-dist-scale`).
+
+Default choice (recommended for aligning with ELIC λ checkpoints): `s_mse = 255^2 (=65025)`
+- This matches the numeric convention used by ELIC/CompressAI (8-bit pixel units for MSE).
+
+Alternative (pure MVSplat scale): `s_mse = 1.0`
+- This keeps MSE in `[0,1]` units; `λ_rd` will typically need to be ~`255^2` larger than the ELIC λ values.
+
+Clarification (to avoid common confusion):
+- `--lambda` selects the **ELIC checkpoint family** (discrete RD operating points).
+- `--rd-lambda` optionally overrides the **E2E RD weight** `λ_rd`. If unset, `λ_rd = --lambda`.
 
 ### 3.4 Optional guardrail: context reconstruction regularizer (anti-degeneracy)
 If you observe unnatural context reconstructions that “help MVSplat” but look pathological,
@@ -188,7 +201,7 @@ Each snapshot is self-contained and directly usable with both:
 ### 5.1 Report bitrate from *real* bitstreams
 We report bpp from **actual entropy-coded bytes**:
 - `ELIC.compress(...)` produces entropy-coded strings.
-- `experiments/v1_baseline/compress.py` computes byte counts from these strings and writes `manifest.csv`.
+- `experiments/v1_compressor/compress.py` computes byte counts from these strings and writes `manifest.csv`.
 
 Why this is critical:
 - Prevents the classic failure mode: “optimized estimated rate, but actual bits drifted”.
@@ -198,7 +211,7 @@ Why this is critical:
 All metrics are computed on:
 - `assets/indices/re10k/evaluation_index_re10k.json`
 using:
-- `experiments/v1_baseline/eval_fair_mvsplat.py`
+- `experiments/v1_renderer/eval_fair_mvsplat.py`
 
 ---
 
@@ -208,6 +221,10 @@ using:
 python experiments/v1_e2e/train_e2e.py \
   --tag e2e \
   --lambda 0.032 \
+  # Optional: decouple the E2E RD weight from the checkpoint family
+  # --rd-lambda 0.001 \
+  # Optional: MSE scaling (default 65025; set 1.0 to keep MSE in [0,1] units)
+  # --nvs-mse-scale 1.0 \
   --mvsplat-init-ckpt checkpoints/vanilla/MVSplat/re10k.ckpt \
   --elic-checkpoints checkpoints/vanilla/ELIC \
   --output-dir checkpoints/v1_e2e \
@@ -222,12 +239,16 @@ python experiments/v1_e2e/train_e2e.py \
 Tip: set `--progress rich` to force the Rich UI even when stdout is not detected as a TTY.
 
 This writes:
-`checkpoints/v1_e2e/e2e_lambda_0.032/`
+`checkpoints/v1_e2e/e2e_lambda_0.032/` (or with suffixes if you set `--rd-lambda` / `--nvs-mse-scale`)
 containing:
 - `mvsplat_finetuned.ckpt`
 - `ELIC_0032_ft_3980_Plateau.pth.tar`
 - `train_log.csv`
 - `run_args.json`
+
+Folder naming:
+- Keep `--tag` short (e.g., `e2e`, `noscale`, `ablate_ctxreg`) and let the script append suffixes.
+- The script writes to `checkpoints/v1_e2e/<tag>_lambda_<elic_lambda>[_rd_<rd_lambda>][_s_<nvs_mse_scale>]/`.
 
 ### 6.2 Export bitstreams + evaluate fairly (same RD point)
 ```bash

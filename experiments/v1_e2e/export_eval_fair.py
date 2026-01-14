@@ -2,8 +2,8 @@
 """Export real ELIC bitstreams + run fair MVSplat eval for a V1-E2E run.
 
 This is a thin orchestration wrapper around:
-  1) `experiments/v1_baseline/compress.py`   (real entropy-coded bytes + recon PNGs)
-  2) `experiments/v1_baseline/eval_fair_mvsplat.py` (fair fixed-index evaluation)
+  1) `experiments/v1_compressor/compress.py`   (real entropy-coded bytes + recon PNGs)
+  2) `experiments/v1_renderer/eval_fair_mvsplat.py` (fair fixed-index evaluation)
 
 The goal is to make the end-to-end pipeline reproducible and "one-command" per
 RD point, without duplicating the baseline implementations.
@@ -99,7 +99,7 @@ def main() -> int:
     export_root = args.compressed_output_root / args.tag
     compress_cmd = [
         sys.executable,
-        str(repo_root / "experiments" / "v1_baseline" / "compress.py"),
+        str(repo_root / "experiments" / "v1_compressor" / "compress.py"),
         "--dataset-root",
         str(args.dataset_root),
         "--index-path",
@@ -128,7 +128,7 @@ def main() -> int:
     # 2) Run fair evaluation against MVSplat using decoded contexts (and manifest bpp).
     eval_cmd = [
         sys.executable,
-        str(repo_root / "experiments" / "v1_baseline" / "eval_fair_mvsplat.py"),
+        str(repo_root / "experiments" / "v1_renderer" / "eval_fair_mvsplat.py"),
         "--tag",
         args.tag,
         "--dataset-root",
@@ -156,4 +156,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

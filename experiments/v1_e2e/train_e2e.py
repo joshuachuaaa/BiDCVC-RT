@@ -14,7 +14,7 @@ Notes:
     (2 context views, and `num_target_views` targets; for RE10K the upstream
     dataset-specific config uses 4 target views).
   - This script does not run validation; evaluate with the fixed eval index via
-    `experiments/v1_baseline/eval_fair_mvsplat.py` after exporting bitstreams.
+    `experiments/v1_renderer/eval_fair_mvsplat.py` after exporting bitstreams.
 """
 
 from __future__ import annotations
@@ -59,7 +59,10 @@ def _lambda_to_elic_ckpt_name(lmbda: float) -> str:
     for k, v in mapping.items():
         if math.isclose(lmbda, k, rel_tol=0.0, abs_tol=1e-12):
             return f"ELIC_{v}_ft_3980_Plateau.pth.tar"
-    raise ValueError(f"Unsupported --lambda={lmbda}; expected one of {sorted(mapping.keys())}")
+    raise ValueError(
+        f"Unsupported --lambda={lmbda}; expected one of {sorted(mapping.keys())}. "
+        "Note: --lambda selects the ELIC checkpoint family; use --rd-lambda to change the E2E RD weight."
+    )
 
 
 def _move_to_device(x: Any, device: str) -> Any:
@@ -159,7 +162,33 @@ def main() -> int:
         dest="lmbda",
         type=float,
         required=True,
-        help="RD trade-off weight (matched to the ELIC checkpoint family: 0.004/0.008/0.016/0.032/0.15/0.45).",
+        help=(
+            "ELIC checkpoint family λ (0.004/0.008/0.016/0.032/0.15/0.45). "
+            "By default this also sets the E2E RD trade-off weight unless --rd-lambda is provided."
+        ),
+    )
+    parser.add_argument(
+        "--rd-lambda",
+        dest="rd_lambda",
+        type=float,
+        default=None,
+        help=(
+            "Optional E2E RD trade-off weight in L = R(bpp_est) + rd_lambda * D_nvs_scaled. "
+            "If unset, defaults to --lambda."
+        ),
+    )
+    parser.add_argument(
+        "--nvs-mse-scale",
+        "--nvs-dist-scale",
+        dest="nvs_mse_scale",
+        type=float,
+        default=65025.0,
+        help=(
+            "Scale applied to the *MSE component* of the MVSplat novel-view loss (LPIPS is unscaled). "
+            "Default 65025 (=255^2) matches ELIC/CompressAI MSE-in-8bit-units convention; "
+            "use 1.0 to keep everything in MVSplat's native [0,1] image scale. "
+            "Note: `--nvs-dist-scale` is a deprecated alias (kept for compatibility)."
+        ),
     )
     parser.add_argument(
         "--dataset-root",
@@ -266,6 +295,12 @@ def main() -> int:
         help="Save intermediate checkpoints every N *nominal* epochs (0 disables).",
     )
     args = parser.parse_args()
+
+    rd_lambda = float(args.rd_lambda) if args.rd_lambda is not None else float(args.lmbda)
+    if rd_lambda <= 0:
+        raise SystemExit("--rd-lambda must be > 0.")
+    if args.nvs_mse_scale <= 0:
+        raise SystemExit("--nvs-mse-scale must be > 0.")
 
     if args.device == "cuda":
         import torch
@@ -425,7 +460,24 @@ def main() -> int:
 
     # Outputs.
     lmbda_str = _format_lambda(args.lmbda)
-    run_dir = args.output_dir / f"{args.tag}_lambda_{lmbda_str}"
+    rd_lmbda_str = _format_lambda(rd_lambda)
+    # Build a stable run directory name.
+    #
+    # Convention:
+    #   <tag>_lambda_<elic_lambda>[_rd_<rd_lambda>][_s_<nvs_mse_scale>]
+    #
+    # Avoid accidental duplication when users include these suffixes in --tag.
+    run_name = str(args.tag)
+    if "_lambda_" not in run_name:
+        run_name = f"{run_name}_lambda_{lmbda_str}"
+    if not math.isclose(rd_lambda, float(args.lmbda), rel_tol=0.0, abs_tol=1e-12) and "_rd_" not in run_name:
+        run_name = f"{run_name}_rd_{rd_lmbda_str}"
+    if (
+        not math.isclose(float(args.nvs_mse_scale), 65025.0, rel_tol=0.0, abs_tol=1e-12)
+        and "_s_" not in run_name
+    ):
+        run_name = f"{run_name}_s_{float(args.nvs_mse_scale):g}"
+    run_dir = args.output_dir / run_name
     run_dir.mkdir(parents=True, exist_ok=True)
     log_path = run_dir / "train_log.csv"
     epoch_log_path = run_dir / "train_epoch_log.csv"
@@ -438,6 +490,8 @@ def main() -> int:
                 "steps_per_epoch_nominal": steps_per_epoch_nominal,
                 "max_steps_effective": max_steps,
                 "save_every_steps_effective": save_every_steps,
+                "rd_lambda_effective": float(rd_lambda),
+                "nvs_mse_scale_effective": float(args.nvs_mse_scale),
                 **vars(args),
                 "dataset_root": str(args.dataset_root),
                 "mvsplat_init_ckpt": str(args.mvsplat_init_ckpt),
@@ -489,6 +543,8 @@ def main() -> int:
         "loss_total",
         "rate_bpp",
         "dist_nvs",
+        "dist_nvs_mse",
+        "dist_nvs_other",
         "dist_nvs_scaled",
         "ctx_mse",
         "aux_loss",
@@ -506,6 +562,8 @@ def main() -> int:
         "loss_total_mean",
         "rate_bpp_mean",
         "dist_nvs_mean",
+        "dist_nvs_mse_mean",
+        "dist_nvs_other_mean",
         "dist_nvs_scaled_mean",
         "ctx_mse_mean",
         "aux_loss_mean",
@@ -585,14 +643,29 @@ def main() -> int:
         )
 
         # Distortion is the same loss family used by vanilla MVSplat training.
+        #
+        # Important: ELIC/CompressAI convention scales *only the MSE term* by 255^2.
+        # LPIPS is unitless and should NOT be scaled.
         dist_nvs = torch.zeros((), dtype=torch.float32, device=rate_bpp.device)
+        dist_mse: torch.Tensor | None = None
+        dist_other = torch.zeros((), dtype=torch.float32, device=rate_bpp.device)
         for loss_fn in mvsplat.losses:
-            dist_nvs = dist_nvs + loss_fn.forward(output, batch, gaussians, global_step)
+            term = loss_fn.forward(output, batch, gaussians, global_step)
+            dist_nvs = dist_nvs + term
+            if type(loss_fn).__name__ == "LossMse":
+                dist_mse = term
+            else:
+                dist_other = dist_other + term
 
-        # Match ELIC's scale convention (ELIC uses MSE * 255^2).
-        dist_nvs_scaled = dist_nvs * (255.0**2)
+        if dist_mse is None:
+            raise RuntimeError(
+                "Expected a LossMse term in mvsplat.losses, but none was found. "
+                "Check the underlying MVSplat config (loss=[mse, lpips])."
+            )
 
-        loss_total = rate_bpp + float(args.lmbda) * dist_nvs_scaled
+        dist_term = dist_mse * float(args.nvs_mse_scale) + dist_other
+
+        loss_total = rate_bpp + float(rd_lambda) * dist_term
         if args.ctx_reg_beta > 0:
             loss_total = loss_total + float(args.ctx_reg_beta) * (ctx_mse * (255.0**2))
 
@@ -600,7 +673,12 @@ def main() -> int:
             "loss_total": loss_total,
             "rate_bpp": rate_bpp.detach(),
             "dist_nvs": dist_nvs.detach(),
-            "dist_nvs_scaled": dist_nvs_scaled.detach(),
+            "dist_nvs_mse": dist_mse.detach(),
+            "dist_nvs_other": dist_other.detach(),
+            # Historical name: in earlier versions we logged dist_nvs * 255^2.
+            # Now this is the *distortion term used in the RD loss*:
+            #   dist_nvs_scaled = (mse * nvs_mse_scale) + (lpips unscaled)
+            "dist_nvs_scaled": dist_term.detach(),
             "ctx_mse": ctx_mse.detach(),
         }
 
@@ -654,7 +732,16 @@ def main() -> int:
             epoch_sums = {}
             epoch_count = 0
 
-        for k in ("loss_total", "rate_bpp", "dist_nvs", "dist_nvs_scaled", "ctx_mse", "aux_loss"):
+        for k in (
+            "loss_total",
+            "rate_bpp",
+            "dist_nvs",
+            "dist_nvs_mse",
+            "dist_nvs_other",
+            "dist_nvs_scaled",
+            "ctx_mse",
+            "aux_loss",
+        ):
             epoch_sums[k] = epoch_sums.get(k, 0.0) + float(row[k])
         epoch_count += 1
 
@@ -675,6 +762,8 @@ def main() -> int:
                 "loss_total_mean": epoch_sums["loss_total"] / epoch_count,
                 "rate_bpp_mean": epoch_sums["rate_bpp"] / epoch_count,
                 "dist_nvs_mean": epoch_sums["dist_nvs"] / epoch_count,
+                "dist_nvs_mse_mean": epoch_sums["dist_nvs_mse"] / epoch_count,
+                "dist_nvs_other_mean": epoch_sums["dist_nvs_other"] / epoch_count,
                 "dist_nvs_scaled_mean": epoch_sums["dist_nvs_scaled"] / epoch_count,
                 "ctx_mse_mean": epoch_sums["ctx_mse"] / epoch_count,
                 "aux_loss_mean": epoch_sums["aux_loss"] / epoch_count,
@@ -736,7 +825,10 @@ def main() -> int:
             TimeRemainingColumn(),
             refresh_per_second=10,
         )
-        task = progress.add_task(f"train {args.tag} (λ={lmbda_str})", total=max_steps)
+        task = progress.add_task(
+            f"train {args.tag} (λ_elic={lmbda_str}, λ_rd={rd_lmbda_str}, s_mse={args.nvs_mse_scale:g})",
+            total=max_steps,
+        )
         with progress:
             for step in range(max_steps):
                 row = train_one_step(step)
@@ -750,7 +842,7 @@ def main() -> int:
                     save_snapshot(global_step_1b)
                 progress.advance(task, 1)
     elif use_tqdm and tqdm is not None:
-        desc = f"train {args.tag} (λ={lmbda_str})"
+        desc = f"train {args.tag} (λ_elic={lmbda_str}, λ_rd={rd_lmbda_str}, s_mse={args.nvs_mse_scale:g})"
         with tqdm(total=max_steps, desc=desc, dynamic_ncols=True) as pbar:
             for step in range(max_steps):
                 row = train_one_step(step)
