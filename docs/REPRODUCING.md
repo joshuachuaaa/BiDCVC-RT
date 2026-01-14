@@ -4,7 +4,7 @@ This repo contains:
 - **V1 baseline** (ELIC-compressed context frames → MVSplat).
 - **V1 E2E** (end-to-end fine-tuning of ELIC + MVSplat with an RD objective).
 
-- V1 baseline: `experiments/v1_compressor/` + `experiments/v1_renderer/`
+- Baselines: `experiments/baselines/`
 - V1 E2E: `experiments/v1_e2e/`
 
 ## Fair R–D plot (baselines)
@@ -15,20 +15,8 @@ Prereqs:
 
 ### 1) Ensure ELIC baseline artifacts exist
 
-If you already have precomputed baseline ELIC bitstreams under:
-- `outputs/v1_baseline/compressed/`
-
-you can evaluate directly (the runner will materialize missing decoded PNGs from the saved bitstreams).
-
-If not, generate them with:
-
-```bash
-python experiments/v1_compressor/compress.py \
-  --index-path assets/indices/re10k/evaluation_index_re10k.json \
-  --lambdas 0.004 0.008 0.016 0.032 0.15 0.45 \
-  --output-root outputs/v1_baseline/compressed \
-  --skip_existing
-```
+Baseline inputs are assumed to already exist under `outputs/v1_baseline/compressed/`.
+This repo focuses on evaluation, not (re)generating those artifacts.
 
 If you're on a CPU-only machine, add `--device cpu` (expect it to be slow).
 

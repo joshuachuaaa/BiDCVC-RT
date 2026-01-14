@@ -48,7 +48,7 @@ export PYTHONPATH="$(pwd):$(pwd)/third_party:${PYTHONPATH}"
 Place files under `checkpoints/` (not tracked by git):
 
 - `checkpoints/vanilla/MVSplat/re10k.ckpt` (MVSplat pretrained on RE10K)
-- `checkpoints/vanilla/ELIC/ELIC_*.pth.tar` (ELIC checkpoints; see `experiments/v1_compressor/compress.py` for λ mapping)
+- `checkpoints/vanilla/ELIC/ELIC_*.pth.tar` (ELIC checkpoints; used by baselines and E2E export)
 - (Optional, training-only) `checkpoints/gmdepth-scale1-resumeflowthings-scannet-5d9d7964.pth` (UniMatch/GMDepth init weights; used by MVSplat's cost-volume encoder in `mode=train`)
 
 Where to download these depends on your setup; the upstream MVSplat README includes links for the RE10K checkpoint and UniMatch weights.

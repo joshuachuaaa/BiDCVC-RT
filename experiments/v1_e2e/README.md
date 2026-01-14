@@ -14,9 +14,8 @@ The intent is not “train something that looks good”, but to produce a pipeli
 - `experiments/v1_e2e/export_eval_fair.py`: one-command export of real bitstreams + fair evaluation.
 - `experiments/v1_e2e/eval_fast_e2e.py`: cheap eval for checkpoint selection (no bitstream export; bpp is an estimate).
 - `experiments/v1_e2e/plot_curves.py`: plot training curves + optional eval curves.
-- Baseline tooling reused:
-  - `experiments/v1_compressor/compress.py` (writes `manifest.csv` from true entropy-coded bytes)
-  - `experiments/v1_renderer/eval_fair_mvsplat.py` (fixed-index evaluation + PSNR/SSIM/LPIPS)
+- Baseline evaluator reused:
+  - `experiments/baselines/eval_fair_mvsplat.py` (fixed-index evaluation + PSNR/SSIM/LPIPS)
 
 ---
 
@@ -69,7 +68,7 @@ We use a fixed, canonical evaluation index:
 - `assets/indices/re10k/evaluation_index_re10k.json` (2 context → 3 target)
 
 Evaluation is run with:
-- `experiments/v1_renderer/eval_fair_mvsplat.py`
+- `experiments/baselines/eval_fair_mvsplat.py`
 
 Why fixed-index evaluation:
 - Eliminates “sampling luck” and makes RD points comparable.
@@ -201,7 +200,7 @@ Each snapshot is self-contained and directly usable with both:
 ### 5.1 Report bitrate from *real* bitstreams
 We report bpp from **actual entropy-coded bytes**:
 - `ELIC.compress(...)` produces entropy-coded strings.
-- `experiments/v1_compressor/compress.py` computes byte counts from these strings and writes `manifest.csv`.
+- `experiments/v1_e2e/export_eval_fair.py` computes byte counts from these strings and writes `manifest.csv`.
 
 Why this is critical:
 - Prevents the classic failure mode: “optimized estimated rate, but actual bits drifted”.
@@ -211,7 +210,7 @@ Why this is critical:
 All metrics are computed on:
 - `assets/indices/re10k/evaluation_index_re10k.json`
 using:
-- `experiments/v1_renderer/eval_fair_mvsplat.py`
+- `experiments/baselines/eval_fair_mvsplat.py`
 
 ---
 
@@ -336,6 +335,6 @@ It matches the upstream MVSplat training sampler; increasing context count would
 
 ## 8) Minimum publishable reporting checklist
 - RD curves (bpp vs PSNR/SSIM/LPIPS) on the fixed test index
-- Ablations: `baseline` vs `v1_renderer` vs `v1_compressor` vs `v1_e2e`
+- Ablations (current scope): `baseline` vs `v1_e2e`
 - Rate sanity: estimated bpp vs actual bpp at evaluation (at least one table/plot)
 - (Optional but recommended) context recon quality + qualitative decoded contexts at low bpp
