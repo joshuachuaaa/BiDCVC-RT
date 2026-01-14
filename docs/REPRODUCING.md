@@ -16,7 +16,7 @@ Prereqs:
 ### 1) Ensure ELIC baseline artifacts exist
 
 If you already have precomputed baseline ELIC bitstreams under:
-- `outputs/baseline_ELIC_crop256/compressed/`
+- `outputs/v1_baseline/compressed/`
 
 you can evaluate directly (the runner will materialize missing decoded PNGs from the saved bitstreams).
 
@@ -26,7 +26,7 @@ If not, generate them with:
 python experiments/v1_compressor/compress.py \
   --index-path assets/indices/re10k/evaluation_index_re10k.json \
   --lambdas 0.004 0.008 0.016 0.032 0.15 0.45 \
-  --output-root outputs/baseline_ELIC_crop256/compressed \
+  --output-root outputs/v1_baseline/compressed \
   --skip_existing
 ```
 
@@ -43,8 +43,8 @@ This writes one canonical CSV:
 
 ```bash
 python experiments/baselines/eval_baselines.py \
-  --compressed-base outputs/baseline_ELIC_crop256/compressed \
-  --out-csv outputs/baselines/re10k_fixed/fair_rd.csv \
+  --compressed-base outputs/v1_baseline/compressed \
+  --out-csv outputs/v1_baseline/results/fair_rd.csv \
   --device cuda
 ```
 
@@ -52,7 +52,7 @@ python experiments/baselines/eval_baselines.py \
 
 ```bash
 bash scripts/plot_fair_rd.sh \
-  --input outputs/baselines/re10k_fixed/fair_rd.csv \
+  --input outputs/v1_baseline/results/fair_rd.csv \
   --note "V1 BPP: bitstream (avg over 2 context views)"
 ```
 
@@ -89,7 +89,7 @@ python experiments/v1_e2e/plot_curves.py \
 
 ```bash
 bash scripts/plot_baseline_vs_e2e.sh \
-  --baseline outputs/baselines/re10k_fixed/fair_rd.csv \
+  --baseline outputs/v1_baseline/results/fair_rd.csv \
   --e2e outputs/v1_e2e/results/fair_rd.csv \
   --outdir outputs/plots/baseline_vs_e2e
 ```

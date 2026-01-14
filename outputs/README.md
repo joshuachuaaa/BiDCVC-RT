@@ -7,8 +7,8 @@ This folder is for run artifacts (logs, metrics CSVs, rendered images) and is ig
 Keep *all* non-source artifacts under `outputs/` so the repo stays clean and reproducible:
 
 - Baselines (vanilla MVSplat + vanilla ELIC→MVSplat):
-  - `outputs/baselines/re10k_fixed/fair_rd.csv`
-  - `outputs/baselines/re10k_fixed/plots/`
+  - `outputs/v1_baseline/results/fair_rd.csv`
+  - `outputs/v1_baseline/results/plots/`
 - End-to-end (ELIC↔MVSplat):
   - `outputs/v1_e2e/results/fair_rd.csv`
   - `outputs/v1_e2e/results/fast_eval.csv` (cheap selection; bpp is an estimate)

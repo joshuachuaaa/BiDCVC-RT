@@ -136,13 +136,13 @@ def main() -> int:
         "--input",
         type=Path,
         nargs="+",
-        default=[repo_root / "outputs" / "baselines" / "re10k_fixed" / "fair_rd.csv"],
+        default=[repo_root / "outputs" / "v1_baseline" / "results" / "fair_rd.csv"],
         help="One or more CSV files to read (rows are concatenated).",
     )
     parser.add_argument(
         "--outdir",
         type=Path,
-        default=repo_root / "outputs" / "baselines" / "re10k_fixed" / "plots",
+        default=repo_root / "outputs" / "v1_baseline" / "results" / "plots",
         help="Output directory for plots.",
     )
     parser.add_argument(

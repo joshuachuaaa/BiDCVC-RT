@@ -5,11 +5,11 @@ set -euo pipefail
 #
 # Usage:
 #   bash scripts/plot_baseline_vs_e2e.sh \
-#     --baseline outputs/baselines/re10k_fixed/fair_rd.csv \
+#     --baseline outputs/v1_baseline/results/fair_rd.csv \
 #     --e2e outputs/v1_e2e/results/fair_rd.csv \
 #     --outdir outputs/plots/baseline_vs_e2e
 
-baseline="outputs/baselines/re10k_fixed/fair_rd.csv"
+baseline="outputs/v1_baseline/results/fair_rd.csv"
 e2e="outputs/v1_e2e/results/fair_rd.csv"
 outdir="outputs/plots/baseline_vs_e2e"
 
@@ -28,4 +28,3 @@ bash scripts/plot_fair_rd.sh \
   --all-metrics \
   --title "RE10K fixed-index (2ctx→3tgt)" \
   --note "bpp = avg over 2 context bitstreams"
-

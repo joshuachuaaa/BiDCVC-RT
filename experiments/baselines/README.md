@@ -11,8 +11,8 @@ All baselines use the same **fixed evaluation protocol**:
 
 ## Where results are written
 By default:
-- CSV: `outputs/baselines/re10k_fixed/fair_rd.csv`
-- plots: `outputs/baselines/re10k_fixed/plots/`
+- CSV: `outputs/v1_baseline/results/fair_rd.csv`
+- plots: `outputs/v1_baseline/results/plots/`
 
 ## Baseline artifacts (ELIC reconstructions)
 This repo supports evaluating from **precomputed** compressed context reconstructions that follow the
@@ -31,8 +31,8 @@ If your precomputed artifacts live elsewhere, pass `--compressed-base` to `eval_
 ```bash
 python experiments/baselines/eval_baselines.py \
   --tag-prefix v1_lambda_ \
-  --compressed-base outputs/baseline_ELIC_crop256/compressed \
-  --out-csv outputs/baselines/re10k_fixed/fair_rd.csv \
+  --compressed-base outputs/v1_baseline/compressed \
+  --out-csv outputs/v1_baseline/results/fair_rd.csv \
   --device cuda
 ```
 
@@ -40,9 +40,8 @@ python experiments/baselines/eval_baselines.py \
 
 ```bash
 bash scripts/plot_fair_rd.sh \
-  --input outputs/baselines/re10k_fixed/fair_rd.csv outputs/v1_e2e/results/fair_rd.csv \
-  --outdir outputs/baselines/re10k_fixed/plots \
+  --input outputs/v1_baseline/results/fair_rd.csv outputs/v1_e2e/results/fair_rd.csv \
+  --outdir outputs/v1_baseline/results/plots \
   --title "RE10K fixed-index (2ctx→3tgt)" \
   --note "bpp = avg over 2 context bitstreams"
 ```
-

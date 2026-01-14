@@ -61,14 +61,14 @@ def _materialize_reconstructions(
     if not manifest_path.exists():
         raise FileNotFoundError(manifest_path)
 
-    # Early-out: if any recon PNG exists, assume materialized.
-    with manifest_path.open("r", newline="", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            p = row.get("recon_png")
-            if p and Path(p).exists():
-                return
-            break
+    # Early-out: if any recon PNG exists in the canonical location, assume materialized.
+    recon_root = lambda_dir / "recon"
+    if recon_root.exists():
+        try:
+            next(recon_root.rglob("*.png"))
+            return
+        except StopIteration:
+            pass
 
     # Load checkpoint path from the manifest (written by the exporter/compressor).
     ckpt_path: Path | None = None
@@ -102,11 +102,12 @@ def _materialize_reconstructions(
 
             scene = row.get("scene")
             frame = row.get("frame")
-            recon_png = row.get("recon_png")
-            if scene is None or frame is None or recon_png is None:
+            if scene is None or frame is None:
                 continue
 
-            recon_path = Path(recon_png)
+            # Do not trust `recon_png` paths inside the manifest: users may rename/move outputs folders.
+            # Always decode into the canonical location relative to `lambda_dir`.
+            recon_path = recon_root / str(scene) / f"{int(frame):0>6}.png"
             if recon_path.exists():
                 continue
 
@@ -154,7 +155,7 @@ def main() -> int:
     parser.add_argument(
         "--compressed-base",
         type=Path,
-        default=repo_root / "outputs" / "baseline_ELIC_crop256" / "compressed",
+        default=repo_root / "outputs" / "v1_baseline" / "compressed",
         help="Directory containing lambda_<λ>/ subfolders (each with recon/ + manifest.csv).",
     )
     parser.add_argument(
@@ -192,7 +193,7 @@ def main() -> int:
     parser.add_argument(
         "--out-csv",
         type=Path,
-        default=repo_root / "outputs" / "baselines" / "re10k_fixed" / "fair_rd.csv",
+        default=repo_root / "outputs" / "v1_baseline" / "results" / "fair_rd.csv",
         help="Where to write the concatenated metrics CSV.",
     )
     parser.add_argument(
@@ -224,6 +225,13 @@ def main() -> int:
     eval_script = repo_root / "experiments" / "v1_renderer" / "eval_fair_mvsplat.py"
     if not eval_script.exists():
         raise FileNotFoundError(eval_script)
+
+    # Backward-compatible defaults: older runs used outputs/baseline_ELIC_crop256/.
+    if args.compressed_base == (repo_root / "outputs" / "v1_baseline" / "compressed"):
+        legacy = repo_root / "outputs" / "baseline_ELIC_crop256" / "compressed"
+        if not args.compressed_base.exists() and legacy.exists():
+            print(f"[baseline] Using legacy compressed base: {legacy}")
+            args.compressed_base = legacy
 
     args.out_csv.parent.mkdir(parents=True, exist_ok=True)
     if args.overwrite and args.out_csv.exists():
