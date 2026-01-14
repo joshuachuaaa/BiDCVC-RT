@@ -82,7 +82,7 @@ Plot training curves:
 python experiments/v1_e2e/plot_curves.py \
   --run-dir checkpoints/v1_e2e/e2e_lambda_0.032_rd_1 \
   --train-mode step --smooth-window 200 \
-  --out outputs/v1_e2e/results.png
+  --out outputs/v1_e2e/results/plots/train_curves.png
 ```
 
 ## Plot baselines vs E2E

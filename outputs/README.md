@@ -12,6 +12,6 @@ Keep *all* non-source artifacts under `outputs/` so the repo stays clean and rep
 - End-to-end (ELIC↔MVSplat):
   - `outputs/v1_e2e/results/fair_rd.csv`
   - `outputs/v1_e2e/results/fast_eval.csv` (cheap selection; bpp is an estimate)
-  - `outputs/v1_e2e/*.png` (training/curve plots)
+  - `outputs/v1_e2e/results/plots/` (training/curve plots)
 
 Avoid writing metrics/plots under `experiments/**/results/` or `experiments/**/compressed/`.

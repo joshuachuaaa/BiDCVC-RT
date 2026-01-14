@@ -285,7 +285,7 @@ python experiments/v1_e2e/eval_fast_e2e.py \
 python experiments/v1_e2e/plot_curves.py \
   --run-dir checkpoints/v1_e2e/e2e_lambda_0.032 \
   --eval-csv outputs/v1_e2e/results/fast_eval.csv \
-  --out outputs/v1_e2e/results
+  --out outputs/v1_e2e/results/plots
 ```
 
 ### 6.6 Sweep all λ values (recommended RD curve recipe)
