@@ -14,11 +14,14 @@ collecting each example's `key`.
 Examples:
   # Write canonical copies under assets/
   python scripts/indices/build_re10k_dataset_index.py --stage train
-  python scripts/indices/build_re10k_dataset_index.py --stage eval
+  python scripts/indices/build_re10k_dataset_index.py --stage test
 
   # Also write into the dataset folder (what the dataloader uses)
   python scripts/indices/build_re10k_dataset_index.py --stage train --write-dataset-index
-  python scripts/indices/build_re10k_dataset_index.py --stage eval  --write-dataset-index
+  python scripts/indices/build_re10k_dataset_index.py --stage test  --write-dataset-index
+
+Notes:
+  - `--stage eval` is accepted as an alias for `test` (it only affects output naming under `assets/indices/`).
 """
 
 from __future__ import annotations
@@ -81,7 +84,7 @@ def main() -> int:
         "--stage",
         choices=["train", "eval", "test"],
         required=True,
-        help="Which split to index (this repo uses train/eval; eval maps to dataset/re10k/test for MVSplat compatibility)",
+        help="Which split to index (use 'train' or 'test'; 'eval' is an alias for 'test' and only affects output naming).",
     )
     parser.add_argument(
         "--output",

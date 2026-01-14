@@ -16,7 +16,9 @@ dataset/re10k/
 
 - `index.json` maps scene keys to `.torch` chunk files.
 - Each `.torch` file is a list of examples containing JPEG bytes + camera parameters.
-- This repo uses **two splits**: `train` and `eval` (where `eval` corresponds to the `test/` folder above, for MVSplat compatibility).
+- This repo uses **two splits**: `train` and `test`.
+- Some helper scripts accept `--stage eval` as an alias for `test` because the canonical index file is named
+  `dataset_index_eval.json` (mirroring the “evaluation split” terminology), but the on-disk directory is still `test/`.
 
 ## Evaluation index
 
