@@ -59,16 +59,23 @@ python experiments/v1_e2e/train_e2e.py \
   --rd-lambda 0.032 \
   --nvs-mse-scale 65025 \
   --device cuda \
+  # Defaults to the upstream warmup length (RE10K: 150k) to start in the post-warmup regime
+  # (view sampling + any step-conditioned schedules).
+  # --view-sampler-step-offset 150000 \
   --max-steps 18000 \
   --batch-size 15 \
   --num-workers 8 \
+  --lr-schedule onecycle \
+  --lr-mvsplat 1e-5 \
+  --lr-elic 3e-5 \
+  --lr-elic-aux 1e-3 \
   --progress rich
 ```
 
 Plot training curves:
 ```bash
 python experiments/v1_e2e/plot_curves.py \
-  --run-dir checkpoints/v1_e2e/e2e_lambda_0.032_rd_1 \
+  --run-dir checkpoints/v1_e2e/e2e_lambda_0.032 \
   --train-mode step --smooth-window 200 \
   --out outputs/v1_e2e/results/plots/train_curves.png
 ```

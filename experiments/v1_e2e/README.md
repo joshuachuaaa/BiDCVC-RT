@@ -59,6 +59,15 @@ We use the upstream MVSplat training sampler:
   - For RE10K, the upstream dataset-specific config sets `num_target_views=4`.
 - Config: `third_party/mvsplat/config/dataset/view_sampler/bounded.yaml`
 
+Important detail for fine-tuning:
+- The bounded sampler has a **warm-up schedule** on context-view spacing (RE10K uses `warm_up_steps=150000`).
+- Since we fine-tune from a pretrained MVSplat checkpoint, `train_e2e.py` defaults to starting the sampler in the
+  **post-warmup** regime via `--view-sampler-step-offset` (default: the config warm-up length). This avoids a
+  distribution shift where fine-tuning accidentally re-enters “early training” sampling.
+  - This also ensures any step-conditioned components in the upstream config behave as intended (e.g., if LPIPS is
+    gated by `apply_after_step` in a given experiment config). `train_e2e.py` prints and records the resolved loss
+    config at startup for auditability.
+
 Why we do this (and why it’s defensible):
 - It matches the pretrained MVSplat distribution (minimizes confounds).
 - It avoids accidental protocol changes like “more context views during fine-tuning”.
@@ -159,6 +168,14 @@ Why two optimizers:
 - This matches the established CompressAI training recipe.
 - It maintains a well-behaved entropy model as the analysis transform shifts.
 
+### 4.2.1 Optimizer + schedule (conference-friendly)
+To minimize training-recipe confounds, `train_e2e.py` matches upstream defaults where possible:
+- **Main optimizer:** Adam with two parameter groups (MVSplat, ELIC-main), with a **cosine OneCycleLR** schedule
+  by default (`--lr-schedule onecycle`). This mirrors vanilla MVSplat’s default optimizer schedule.
+- **Aux optimizer:** Adam on ELIC entropy-bottleneck quantiles (`elic.aux_loss()`), kept at a constant LR (CompressAI convention).
+
+For reproducibility and critique resistance, the script logs per-step learning rates + grad norms in `train_log.csv`.
+
 ### 4.3 Quantization path
 `train_e2e.py` defaults to `--elic-noisequant` to match the ELIC reimplementation’s training behavior.
 This is a standard relaxation for quantization-aware training.
@@ -229,6 +246,10 @@ python experiments/v1_e2e/train_e2e.py \
   --output-dir checkpoints/v1_e2e \
   --device cuda \
   --progress auto \
+  --lr-schedule onecycle \
+  --lr-mvsplat 1e-5 \
+  --lr-elic 3e-5 \
+  --lr-elic-aux 1e-3 \
   --max-steps 10000 \
   --save-every-epochs 2 \
   --batch-size 1 \
