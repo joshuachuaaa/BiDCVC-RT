@@ -249,46 +249,70 @@ def main() -> int:
         f"λ_rd={rd_str},  s_mse={s_str}"
     )
 
-    fig, axes = plt.subplots(2, 3, figsize=(15, 7), constrained_layout=True)
+    fig = plt.figure(figsize=(15, 8))
+    gs = fig.add_gridspec(
+        3,
+        3,
+        height_ratios=[1.0, 1.0, 0.22],
+        left=0.06,
+        right=0.99,
+        top=0.92,
+        bottom=0.08,
+        hspace=0.35,
+        wspace=0.25,
+    )
+    axes = [[fig.add_subplot(gs[r, c]) for c in range(3)] for r in range(2)]
+    text_ax = fig.add_subplot(gs[2, :])
+    text_ax.axis("off")
+    text_ax.text(0.0, 0.5, formula, ha="left", va="center", fontsize=9)
 
-    ax = axes[0, 0]
-    ax.plot(x_train, train_loss, linewidth=1.2)
+    c_loss = "#1f77b4"
+    c_rate = "#ff7f0e"
+    c_dist = "#2ca02c"
+
+    ax = axes[0][0]
+    ax.plot(x_train, train_loss, linewidth=1.4, color=c_loss)
     ax.set_title("total loss (raw)")
     ax.set_xlabel(x_label)
 
-    ax = axes[0, 1]
-    ax.plot(x_train, train_bpp, linewidth=1.2)
+    ax = axes[0][1]
+    ax.plot(x_train, train_bpp, linewidth=1.4, color=c_rate)
     ax.set_title("rate R (bpp estimate, raw)")
     ax.set_xlabel(x_label)
 
-    ax = axes[0, 2]
-    ax.plot(x_train, train_dist, linewidth=1.2)
+    ax = axes[0][2]
+    ax.plot(x_train, train_dist, linewidth=1.4, color=c_dist)
     ax.set_title("distortion D (raw)")
     ax.set_xlabel(x_label)
 
-    ax = axes[1, 0]
-    ax.plot(x_train, train_loss_s, linewidth=1.2)
-    ax.set_title(f"total loss (MA{smooth_window})" if smooth_window > 1 else "total loss (smoothed)")
+    ax = axes[1][0]
+    ax.plot(x_train, train_loss, linewidth=1.0, color=c_loss, alpha=0.25)
+    ax.plot(x_train, train_loss_s, linewidth=2.0, color=c_loss)
+    ax.set_title(f"total loss (smoothed MA{smooth_window})" if smooth_window > 1 else "total loss (smoothed)")
     ax.set_xlabel(x_label)
 
-    ax = axes[1, 1]
-    ax.plot(x_train, train_bpp_s, linewidth=1.2)
-    ax.set_title(f"rate R (MA{smooth_window})" if smooth_window > 1 else "rate R (smoothed)")
+    ax = axes[1][1]
+    ax.plot(x_train, train_bpp, linewidth=1.0, color=c_rate, alpha=0.25)
+    ax.plot(x_train, train_bpp_s, linewidth=2.0, color=c_rate)
+    ax.set_title(f"rate R (smoothed MA{smooth_window})" if smooth_window > 1 else "rate R (smoothed)")
     ax.set_xlabel(x_label)
 
-    ax = axes[1, 2]
-    ax.plot(x_train, train_dist_s, linewidth=1.2)
-    ax.set_title(f"distortion D (MA{smooth_window})" if smooth_window > 1 else "distortion D (smoothed)")
+    ax = axes[1][2]
+    ax.plot(x_train, train_dist, linewidth=1.0, color=c_dist, alpha=0.25)
+    ax.plot(x_train, train_dist_s, linewidth=2.0, color=c_dist)
+    ax.set_title(
+        f"distortion D (smoothed MA{smooth_window})" if smooth_window > 1 else "distortion D (smoothed)"
+    )
     ax.set_xlabel(x_label)
 
-    for ax in axes.ravel():
-        ax.grid(True, linestyle="--", linewidth=0.8, alpha=0.25)
+    for row in axes:
+        for ax in row:
+            ax.grid(True, linestyle="--", linewidth=0.8, alpha=0.25)
 
     title = args.run_dir.name
     if rd_lambda is not None:
         title = f"{title} | λ_rd={rd_str}"
     fig.suptitle(title)
-    fig.text(0.01, 0.01, formula, ha="left", va="bottom", fontsize=9)
 
     out_path = _resolve_out_path(args.out, run_dir=args.run_dir, run_key=run_key)
     out_path.parent.mkdir(parents=True, exist_ok=True)
