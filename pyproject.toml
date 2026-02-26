@@ -1,23 +1,25 @@
 [build-system]
-requires = []
-build-backend = "bidcvc_build_backend"
-backend-path = ["."]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "bidcvc-rt"
 version = "0.0.0"
 description = "BiDCVC-RT: bidirectional stereo extension of DCVC-RT (research scaffold)"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.11"
 license = { file = "LICENSE" }
 authors = [{ name = "TODO", email = "TODO" }]
 dependencies = []
 
 [project.optional-dependencies]
-dev = [
-  "pytest>=7; python_version < '3.12'",
-  "pytest @ file:vendor/pytest; python_version >= '3.12'",
-]
+dev = ["pytest"]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

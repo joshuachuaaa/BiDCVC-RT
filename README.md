@@ -124,6 +124,12 @@ python scripts/decode_stereo.py --help
 
 ---
 
+## Optional downstream evaluation (separate repo)
+
+Rendered-view / novel-view evaluation may be explored in a separate downstream repository (e.g., using MVSplat), but it is not a goal of this repository and no such code will live here.
+
+---
+
 ## DCVC-RT dependency
 
 Vanilla DCVC-RT is intentionally **not** vendored here. Add it under `third_party/DCVC/` as a git submodule (see `third_party/DCVC/README.md`), and implement glue under `src/bidcvc/models/dcvc_adapter/`.
