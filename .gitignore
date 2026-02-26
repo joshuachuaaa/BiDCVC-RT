@@ -40,6 +40,8 @@ logs/**
 # Python caches
 **/__pycache__/
 **/*.pyc
+**/*.pyo
+**/*.pyd
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -55,6 +57,7 @@ dist/
 .venv/
 venv/
 env/
+ENV/
 __pypackages__/
 .ipynb_checkpoints/
 
