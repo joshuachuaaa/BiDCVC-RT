@@ -1,0 +1,9 @@
+# Minimal codec config (placeholder)
+codec:
+  name: bidcvc_rt
+  qp: 22
+  sps:
+    sps_id: 0
+    width: 1920
+    height: 1080
+

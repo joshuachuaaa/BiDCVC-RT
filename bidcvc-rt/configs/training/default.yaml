@@ -1,0 +1,7 @@
+# Minimal training config (placeholder)
+training:
+  seed: 0
+  epochs: 1
+  batch_size: 1
+output_dir: runs/training
+

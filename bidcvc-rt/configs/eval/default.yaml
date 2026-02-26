@@ -1,0 +1,9 @@
+# Minimal eval config (placeholder)
+eval:
+  dataset: TODO
+  metrics:
+    - rd
+    - latency
+    - stereo_consistency
+output_dir: runs/eval
+
